@@ -1357,6 +1357,11 @@ thead .conv-cb label {
     /*background-color: #deecf9;*/
     background-color: #e5effb;
 }
+.conv-sort {
+    position: relative;
+    left: 1px;
+    top: -1px;
+}
 .table-conversations td.conv-customer a {
     line-height: 1.2em;
     padding-left: 0;
@@ -2101,6 +2106,9 @@ button.conv-checkbox-clear {
     /*margin-top: 5px;*/
     /*padding-top: 12px;*/
     /*padding-bottom: 10px;*/
+}
+.thread-body .alert .glyphicon {
+    top: 2px;
 }
 .thread-meta {
     font-size: 12.5px;
@@ -2937,6 +2945,9 @@ ul.sidebar-block-list {
 .alert-narrow {
     padding-top: 5px;
     padding-bottom: 5px;
+}
+.thread-body .alert-narrow {
+    padding-top: 6px;
 }
 .alert-danger.alert-light {
     background-color: #f5e7e9;

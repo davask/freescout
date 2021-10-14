@@ -12,7 +12,7 @@ return [
     | or any other location as required by the application or its packages.
     */
 
-    'version' => '1.7.7',
+    'version' => '1.7.18',
 
     /*
     |--------------------------------------------------------------------------
@@ -92,7 +92,7 @@ return [
     */
 
     'locale'          => env('APP_LOCALE', 'en'),
-    'locales'         => ['en', 'nl', 'fr', 'de', 'ja', 'it', 'pl', 'pt-PT', 'pt-BR', 'ru', 'es', 'sv'],
+    'locales'         => ['en', 'nl', 'fr', 'da', 'de', 'ja', 'it', 'pl', 'pt-PT', 'pt-BR', 'ru', 'es', 'sv'],
     'default_locale'  => 'en',
 
     /*
@@ -261,9 +261,10 @@ return [
     /*
     |--------------------------------------------------------------------------
     | File types which should be viewed in the browser instead of downloading.
+    | SVG images are not viewable to avid XSS.
     |-------------------------------------------------------------------------
     */
-    'viewable_attachments'    => env('APP_VIEWABLE_ATTACHMENTS', ['jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp', 'apng', 'bmp', 'gif', 'ico', 'cur', 'png', 'svg', 'tif', 'tiff', 'webp', 'pdf', 'txt', 'mp3', 'wav', 'ogg', 'wma']),
+    'viewable_attachments'    => env('APP_VIEWABLE_ATTACHMENTS', ['jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp', 'apng', 'bmp', 'gif', 'ico', 'cur', 'png', 'tif', 'tiff', 'webp', 'pdf', 'txt', 'mp3', 'wav', 'ogg', 'wma']),
 
     /*
     |--------------------------------------------------------------------------

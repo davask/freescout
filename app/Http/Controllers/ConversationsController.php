@@ -248,7 +248,7 @@ class ConversationsController extends Controller
             }
             // Show replying first.
             usort($viewers, function($a, $b) {
-                return $a['replying'] < $b['replying'];
+                return $b['replying'] <=> $a['replying'];
             });
         }
 
@@ -837,6 +837,7 @@ class ConversationsController extends Controller
                         }
                     }
 
+                    \Eventy::action('thread.before_save_from_request', $thread, $request);
                     $thread->save();
 
                     // Save forwarded thread.
@@ -1326,8 +1327,8 @@ class ConversationsController extends Controller
                     $response['data'] = [
                         'thread_id'   => $thread->id,
                         'to'          => $thread->getToFirst(),
-                        'cc'          => $thread->getCcString(),
-                        'bcc'         => $thread->getBccString(),
+                        'cc'          => $thread->getCcArray(),
+                        'bcc'         => $thread->getBccArray(),
                         'body'        => $thread->body,
                         'is_forward'  => (int)$thread->isForward(),
                         'attachments' => $attachments,
@@ -1336,7 +1337,8 @@ class ConversationsController extends Controller
                 }
                 break;
 
-            // Load attachments from all threads in conversation (when forwarding).
+            // Load attachments from all threads in conversation 
+            // when forwarding or creating a new conversation.
             case 'load_attachments':
                 $conversation = Conversation::find($request->conversation_id);
                 if (!$conversation) {
@@ -1355,7 +1357,11 @@ class ConversationsController extends Controller
                         foreach ($conversation->threads as $thread) {
                             if ($thread->has_attachments) {
                                 foreach ($thread->attachments as $attachment) {
-                                    $attachment_copy = $attachment->duplicate($thread->id);
+                                    if ($request->is_forwarding == 'true') {
+                                        $attachment_copy = $attachment->duplicate($thread->id);
+                                    } else {
+                                        $attachment_copy = $attachment;
+                                    }
 
                                     $attachments[] = [
                                         'id'   => $attachment_copy->id,

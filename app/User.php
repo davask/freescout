@@ -6,6 +6,7 @@
 
 namespace App;
 
+use App\Email;
 use App\Mail\PasswordChanged;
 use App\Mail\UserInvite;
 use App\Notifications\WebsiteNotification;
@@ -438,7 +439,7 @@ class User extends Authenticatable
      *
      * @return string
      */
-    public static function dateFormat($date, $format = 'M j, Y H:i', $user = null, $modify_format = true)
+    public static function dateFormat($date, $format = 'M j, Y H:i', $user = null, $modify_format = true, $use_user_timezone = true)
     {
         if (!$user) {
             $user = auth()->user();
@@ -454,6 +455,10 @@ class User extends Authenticatable
 
         if (!$date) {
             return '';
+        }
+
+        if (!$format) {
+            $format = 'M j, Y H:i';
         }
 
         if ($user && $user !== false) {
@@ -476,10 +481,11 @@ class User extends Authenticatable
             }
             // todo: formatLocalized has to be used here and below,
             // but it returns $format value instead of formatted date
-            return $date->setTimezone($user->timezone)->format($format);
-        } else {
-            return $date->format($format);
+            if ($use_user_timezone) {
+                $date->setTimezone($user->timezone);
+            }
         }
+        return $date->format($format);
     }
 
     /**
@@ -979,6 +985,7 @@ class User extends Authenticatable
                     $join->on('mailbox_user.user_id', '=', 'users.id');
                 })
                 ->whereIn('mailbox_user.mailbox_id', $mailbox_ids)
+                ->groupBy('users.id')
                 ->get();
         }
 
@@ -1027,5 +1034,26 @@ class User extends Authenticatable
     public static function getUserPermissionsList()
     {
         return \Eventy::filter('user_permissions.list', self::$user_permissions);
+    }
+
+    /**
+     * Check user main and alternate emails.
+     */
+    public function hasEmail($email)
+    {
+        $email = Email::sanitizeEmail($email);
+
+        if ($this->email == $email) {
+            return true;
+        }
+        $alt_emails = explode(',', $this->emails);
+        
+        foreach ($alt_emails as $alt_email) {
+            if (Email::sanitizeEmail($alt_email) == $email) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

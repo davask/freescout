@@ -544,7 +544,9 @@ class Thread extends Model
         $person = '';
 
         if ($this->type == self::TYPE_CUSTOMER) {
-            $person = $this->customer_cached->getFullName(true);
+            if ($this->customer_cached) {
+                $person = $this->customer_cached->getFullName(true);
+            }
         } elseif ($this->state == self::STATE_DRAFT && !empty($this->edited_by_user_id)) {
             // Draft
             if (auth()->user() && $this->edited_by_user_id == auth()->user()->id) {
@@ -568,9 +570,10 @@ class Thread extends Model
 
     /**
      * Get action text.
+     * $by_user - user who performed the action.
      * $person must be already escaped.
      */
-    public function getActionText($conversation_number = '', $escape = false, $strip_tags = false, $by_user = null, $person = '')
+    public function getActionText($conversation_number = '', $escape = false, $strip_tags = false, $by_user = null, $person = '', $viewed_by_user = null)
     {
         $did_this = '';
 
@@ -639,7 +642,7 @@ class Thread extends Model
             }
         }
 
-        $did_this = \Eventy::filter('thread.action_text', $did_this, $this, $conversation_number, $escape);
+        $did_this = \Eventy::filter('thread.action_text', $did_this, $this, $conversation_number, $escape, $viewed_by_user);
 
         if ($strip_tags) {
             $did_this = strip_tags($did_this);
@@ -659,11 +662,11 @@ class Thread extends Model
     /**
      * Description of what happened.
      */
-    public function getActionDescription($conversation_number, $escape = true)
+    public function getActionDescription($conversation_number, $escape = true, $viewed_by_user = null)
     {
         // Person
         $person = $this->getActionPerson($conversation_number);
-        $did_this = $this->getActionText($conversation_number);
+        $did_this = $this->getActionText($conversation_number, false, false, null, '', $viewed_by_user);
 
         if ($escape) {
             $person = htmlspecialchars($person);
@@ -1039,29 +1042,60 @@ class Thread extends Model
             $conversation->setBcc($bcc);
         }
 
+        $update_folder = false;
+
         if ($thread->isReply()) {
             $conversation->last_reply_at = $now;
             if ($is_customer) {
                 $conversation->last_reply_from = Conversation::PERSON_CUSTOMER;
-                // Reply from customer makes conversation active
-                $conversation->status = Conversation::STATUS_ACTIVE;
+
+                // Set specific status
+                if (!empty($data['status'])) {
+                    if ((int)$conversation->status != (int)$data['status']) {
+                        $update_folder = true;
+                    }
+                    $conversation->status = $data['status'];
+                } else {
+                    if ((int)$conversation->status != Conversation::STATUS_ACTIVE) {
+                        $update_folder = true;
+                    }
+                    // Reply from customer makes conversation active
+                    $conversation->status = Conversation::STATUS_ACTIVE;
+                }
             } else {
                 $conversation->last_reply_from = Conversation::PERSON_USER;
                 $conversation->user_updated_at = $now;
-                $conversation->status = Conversation::STATUS_PENDING;
+                
+                if (!empty($data['status'])) {
+                    if ((int)$conversation->status != (int)$data['status']) {
+                        $update_folder = true;
+                    }
+                    $conversation->status = $data['status'];
+                } else {
+                    if ((int)$conversation->status != Conversation::STATUS_PENDING) {
+                        $update_folder = true;
+                    }
+                    // Reply from customer makes conversation active
+                    $conversation->status = Conversation::STATUS_PENDING;
+                }
             }
         }
-
-        // Set specific status
-        if (!empty($data['status'])) {
-            $conversation->status = $data['status'];
-        }
         
+        // Reply from customer to deleted conversation should undelete it.
+        if ($data['type'] == Thread::TYPE_CUSTOMER && $conversation->state == Conversation::STATE_DELETED) {
+            $conversation->state = Conversation::STATE_PUBLISHED;
+            $update_folder = true;
+        }
+
         if ($update_conv) {
             $conversation->customer_id = $customer->id;
 
             if ($is_customer) {
                 $conversation->customer_email = $customer->getMainEmail();
+            }
+
+            if ($update_folder) {
+                $conversation->updateFolder();
             }
         }
 
@@ -1180,6 +1214,18 @@ class Thread extends Model
         $metas = $this->getMetas();
         $metas[$key] = $value;
         $this->setMetas($metas);
+    }
+
+    /**
+     * Unset thread meta value.
+     */
+    public function unsetMeta($key)
+    {
+        $metas = $this->getMetas();
+        if (isset($metas[$key])) {
+            unset($metas[$key]);
+            $this->setMetas($metas);
+        }
     }
 
     /**

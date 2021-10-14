@@ -13,37 +13,37 @@ class Mail
     /**
      * Reply separators.
      */
-    const REPLY_SEPARATOR_HTML = 'fsReplyAbove';
-    const REPLY_SEPARATOR_TEXT = '-- Please reply above this line --';
+    public const REPLY_SEPARATOR_HTML = 'fsReplyAbove';
+    public const REPLY_SEPARATOR_TEXT = '-- Please reply above this line --';
 
     /**
      * Message-ID prefixes for outgoing emails.
      */
-    const MESSAGE_ID_PREFIX_NOTIFICATION = 'notify';
-    const MESSAGE_ID_PREFIX_NOTIFICATION_IN_REPLY = 'conversation';
-    const MESSAGE_ID_PREFIX_REPLY_TO_CUSTOMER = 'reply';
-    const MESSAGE_ID_PREFIX_AUTO_REPLY = 'autoreply';
+    public const MESSAGE_ID_PREFIX_NOTIFICATION = 'notify';
+    public const MESSAGE_ID_PREFIX_NOTIFICATION_IN_REPLY = 'conversation';
+    public const MESSAGE_ID_PREFIX_REPLY_TO_CUSTOMER = 'reply';
+    public const MESSAGE_ID_PREFIX_AUTO_REPLY = 'autoreply';
 
     /**
      * Mail drivers.
      */
-    const MAIL_DRIVER_MAIL = 'mail';
-    const MAIL_DRIVER_SENDMAIL = 'sendmail';
-    const MAIL_DRIVER_SMTP = 'smtp';
+    public const MAIL_DRIVER_MAIL = 'mail';
+    public const MAIL_DRIVER_SENDMAIL = 'sendmail';
+    public const MAIL_DRIVER_SMTP = 'smtp';
 
     /**
      * Encryptions.
      */
-    const MAIL_ENCRYPTION_NONE = '';
-    const MAIL_ENCRYPTION_SSL = 'ssl';
-    const MAIL_ENCRYPTION_TLS = 'tls';
+    public const MAIL_ENCRYPTION_NONE = '';
+    public const MAIL_ENCRYPTION_SSL = 'ssl';
+    public const MAIL_ENCRYPTION_TLS = 'tls';
 
-    const FETCH_SCHEDULE_EVERY_MINUTE = 1;
-    const FETCH_SCHEDULE_EVERY_FIVE_MINUTES = 5;
-    const FETCH_SCHEDULE_EVERY_TEN_MINUTES = 10;
-    const FETCH_SCHEDULE_EVERY_FIFTEEN_MINUTES = 15;
-    const FETCH_SCHEDULE_EVERY_THIRTY_MINUTES = 30;
-    const FETCH_SCHEDULE_HOURLY = 60;
+    public const FETCH_SCHEDULE_EVERY_MINUTE = 1;
+    public const FETCH_SCHEDULE_EVERY_FIVE_MINUTES = 5;
+    public const FETCH_SCHEDULE_EVERY_TEN_MINUTES = 10;
+    public const FETCH_SCHEDULE_EVERY_FIFTEEN_MINUTES = 15;
+    public const FETCH_SCHEDULE_EVERY_THIRTY_MINUTES = 30;
+    public const FETCH_SCHEDULE_HOURLY = 60;
 
     /**
      * If reply is not extracted properly from the incoming email, add here a new separator.
@@ -81,6 +81,7 @@ class Mail
      * Configure mail sending parameters.
      *
      * @param App\Mailbox $mailbox
+     * @param null|mixed  $user_from
      */
     public static function setMailDriver($mailbox = null, $user_from = null)
     {
@@ -90,7 +91,7 @@ class Mail
             \Config::set('mail.from', $mailbox->getMailFrom($user_from));
 
             // SMTP
-            if ($mailbox->out_method == Mailbox::OUT_METHOD_SMTP) {
+            if (Mailbox::OUT_METHOD_SMTP == $mailbox->out_method) {
                 \Config::set('mail.host', $mailbox->out_server);
                 \Config::set('mail.port', $mailbox->out_port);
                 if (!$mailbox->out_username) {
@@ -147,11 +148,11 @@ class Mail
         \Config::set('mail.driver', self::getSystemMailDriver());
         \Config::set('mail.from', [
             'address' => self::getSystemMailFrom(),
-            'name'    => Option::get('company_name', \Config::get('app.name')),
+            'name' => Option::get('company_name', \Config::get('app.name')),
         ]);
 
         // SMTP
-        if (\Config::get('mail.driver') == self::MAIL_DRIVER_SMTP) {
+        if (self::MAIL_DRIVER_SMTP == \Config::get('mail.driver')) {
             \Config::set('mail.host', Option::get('mail_host'));
             \Config::set('mail.port', Option::get('mail_port'));
             if (!Option::get('mail_username')) {
@@ -159,7 +160,7 @@ class Mail
                 \Config::set('mail.password', null);
             } else {
                 \Config::set('mail.username', Option::get('mail_username'));
-                \Config::set('mail.password', decrypt(Option::get('mail_password')));
+                \Config::set('mail.password', \Helper::decrypt(Option::get('mail_password')));
             }
             \Config::set('mail.encryption', Option::get('mail_encryption'));
         }
@@ -169,6 +170,10 @@ class Mail
 
     /**
      * Replace mail vars in the text.
+     *
+     * @param mixed $text
+     * @param mixed $data
+     * @param mixed $escape
      */
     public static function replaceMailVars($text, $data = [], $escape = false)
     {
@@ -211,6 +216,8 @@ class Mail
 
     /**
      * Check if text has vars in it.
+     *
+     * @param mixed $text
      */
     public static function hasVars($text)
     {
@@ -219,6 +226,9 @@ class Mail
 
     /**
      * Remove email from a list of emails.
+     *
+     * @param mixed $list
+     * @param mixed $email
      */
     public static function removeEmailFromArray($list, $email)
     {
@@ -248,6 +258,9 @@ class Mail
 
     /**
      * Send test email from mailbox.
+     *
+     * @param mixed      $to
+     * @param null|mixed $mailbox
      */
     public static function sendTestMail($to, $mailbox = null)
     {
@@ -271,7 +284,8 @@ class Mail
 
             try {
                 \Mail::to([['name' => '', 'email' => $to]])
-                    ->send(new \App\Mail\Test());
+                    ->send(new \App\Mail\Test())
+            ;
             } catch (\Exception $e) {
                 // We come here in case SMTP server unavailable for example
                 $status_message = $e->getMessage();
@@ -282,29 +296,30 @@ class Mail
             SendLog::log(null, null, $to, SendLog::MAIL_TYPE_TEST, SendLog::STATUS_SEND_ERROR, null, null, $status_message);
             if ($status_message) {
                 throw new \Exception($status_message, 1);
-            } else {
-                return false;
             }
-        } else {
-            SendLog::log(null, null, $to, SendLog::MAIL_TYPE_TEST, SendLog::STATUS_ACCEPTED);
 
-            return true;
+            return false;
         }
+        SendLog::log(null, null, $to, SendLog::MAIL_TYPE_TEST, SendLog::STATUS_ACCEPTED);
+
+        return true;
     }
 
     /**
      * Check POP3/IMAP connection to the mailbox.
+     *
+     * @param mixed $mailbox
      */
     public static function fetchTest($mailbox)
     {
         $client = new Client([
-            'host'          => $mailbox->in_server,
-            'port'          => $mailbox->in_port,
-            'encryption'    => $mailbox->getInEncryptionName(),
+            'host' => $mailbox->in_server,
+            'port' => $mailbox->in_port,
+            'encryption' => $mailbox->getInEncryptionName(),
             'validate_cert' => $mailbox->in_validate_cert,
-            'username'      => $mailbox->in_username,
-            'password'      => $mailbox->in_password,
-            'protocol'      => $mailbox->getInProtocolName(),
+            'username' => $mailbox->in_username,
+            'password' => $mailbox->in_password,
+            'protocol' => $mailbox->getInProtocolName(),
         ]);
 
         // Connect to the Server
@@ -333,13 +348,15 @@ class Mail
 
         if ($last_error) {
             throw new \Exception($last_error, 1);
-        } else {
-            return true;
         }
+
+        return true;
     }
 
     /**
      * Convert list of emails to array.
+     *
+     * @param mixed $emails
      *
      * @return array
      */
@@ -377,6 +394,9 @@ class Mail
 
     /**
      * Send system alert to super admin.
+     *
+     * @param mixed $text
+     * @param mixed $title
      */
     public static function sendAlertMail($text, $title = '')
     {
@@ -385,6 +405,11 @@ class Mail
 
     /**
      * Send email to developers team.
+     *
+     * @param mixed      $subject
+     * @param mixed      $body
+     * @param mixed      $attachments
+     * @param null|mixed $from_user
      */
     public static function sendEmailToDevs($subject, $body, $attachments = [], $from_user = null)
     {
@@ -397,7 +422,8 @@ class Mail
             \Mail::raw($body, function ($message) use ($subject, $attachments, $from_user) {
                 $message
                     ->subject($subject)
-                    ->to(\Config::get('app.freescout_email'));
+                    ->to(\Config::get('app.freescout_email'))
+                ;
                 if ($attachments) {
                     foreach ($attachments as $attachment) {
                         $message->attach($attachment);
@@ -416,9 +442,9 @@ class Mail
 
         if (\Mail::failures()) {
             return false;
-        } else {
-            return true;
         }
+
+        return true;
     }
 
     /**
@@ -439,6 +465,7 @@ class Mail
      * Fetch Message-ID from incoming email body.
      *
      * @param [type] $message_id [description]
+     * @param mixed $body
      *
      * @return [type] [description]
      */
@@ -458,13 +485,15 @@ class Mail
      * https://github.com/jpmckinney/multi_mail/wiki/Detecting-autoresponders
      * https://www.jitbit.com/maxblog/18-detecting-outlook-autoreplyout-of-office-emails-and-x-auto-response-suppress-header/.
      *
+     * @param mixed $headers_str
+     *
      * @return bool [description]
      */
     public static function isAutoResponder($headers_str)
     {
         $autoresponder_headers = [
-            'x-autoreply'    => '',
-            'x-autorespond'  => '',
+            'x-autoreply' => '',
+            'x-autorespond' => '',
             'auto-submitted' => 'auto-replied',
             'precedence' => ['auto_reply', 'bulk', 'junk'],
             'x-precedence' => ['auto_reply', 'bulk', 'junk'],
@@ -474,7 +503,7 @@ class Mail
         foreach ($autoresponder_headers as $auto_header => $auto_header_value) {
             foreach ($headers as $header) {
                 $parts = explode(':', $header, 2);
-                if (count($parts) == 2) {
+                if (2 == count($parts)) {
                     $name = trim(strtolower($parts[0]));
                     $value = trim($parts[1]);
                 } else {
@@ -483,7 +512,8 @@ class Mail
                 if (strtolower($name) == $auto_header) {
                     if (!$auto_header_value) {
                         return true;
-                    } elseif (is_array($auto_header_value)) {
+                    }
+                    if (is_array($auto_header_value)) {
                         foreach ($auto_header_value as $auto_header_value_item) {
                             if ($value == $auto_header_value_item) {
                                 return true;
@@ -510,13 +540,13 @@ class Mail
     public static function detectBounceByHeaders($headers)
     {
         if (preg_match("/Content-Type:((?:[^\n]|\n[\t ])+)(?:\n[^\t ]|$)/i", $headers, $match)
-            && preg_match("/multipart\/report/i", $match[1])
+            && preg_match('/multipart\\/report/i', $match[1])
             && preg_match("/report-type=[\"']?delivery-status[\"']?/i", $match[1])
         ) {
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -543,13 +573,15 @@ class Mail
         }
         $value = null;
         if (property_exists($headers, $header)) {
-            $value = $headers->$header;
+            $value = $headers->{$header};
         } else {
             return;
         }
+
         switch ($header) {
             case 'message_id':
                 $value = str_replace(['<', '>'], '', $value);
+
                 break;
         }
 
@@ -558,22 +590,27 @@ class Mail
 
     /**
      * Get client for fetching emails.
+     *
+     * @param mixed $mailbox
      */
     public static function getMailboxClient($mailbox)
     {
         return new \Webklex\IMAP\Client([
-            'host'          => $mailbox->in_server,
-            'port'          => $mailbox->in_port,
-            'encryption'    => $mailbox->getInEncryptionName(),
+            'host' => $mailbox->in_server,
+            'port' => $mailbox->in_port,
+            'encryption' => $mailbox->getInEncryptionName(),
             'validate_cert' => $mailbox->in_validate_cert,
-            'username'      => $mailbox->in_username,
-            'password'      => $mailbox->in_password,
-            'protocol'      => $mailbox->getInProtocolName(),
+            'username' => $mailbox->in_username,
+            'password' => $mailbox->in_password,
+            'protocol' => $mailbox->getInProtocolName(),
         ]);
     }
 
     /**
      * Generate artificial Message-ID.
+     *
+     * @param mixed $email_address
+     * @param mixed $raw_body
      */
     public static function generateMessageId($email_address, $raw_body = '')
     {
@@ -582,11 +619,14 @@ class Mail
             $hash = md5(strval($raw_body));
         }
 
-        return 'fs-'.$hash.'@'.preg_replace("/.*@/", '', $email_address);
+        return 'fs-'.$hash.'@'.preg_replace('/.*@/', '', $email_address);
     }
 
     /**
      * Fetch IMAP message by Message-ID.
+     *
+     * @param mixed $mailbox
+     * @param mixed $message_id
      */
     public static function fetchMessage($mailbox, $message_id)
     {
@@ -600,6 +640,8 @@ class Mail
             $client = \MailHelper::getMailboxClient($mailbox);
             $client->connect();
         } catch (\Exception $e) {
+            \Helper::logException($e, '('.$mailbox->name.') Could not fetch specific message by Message-ID via IMAP:');
+
             return null;
         }
 
@@ -629,9 +671,8 @@ class Mail
                 if (count($messages)) {
                     return $messages->first();
                 }
-
             } catch (\Exception $e) {
-                // Do nothing.
+                \Helper::logException($e, '('.$mailbox->name.') Could not fetch specific message by Message-ID via IMAP:');
             }
         }
 

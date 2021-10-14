@@ -958,6 +958,8 @@ class Helper
      */
     public static function backgroundAction($action, $params, $delay = 0)
     {
+        $delay = \Eventy::filter('backgound_action.dispatch_delay', $delay, $action, $params);
+
         $job = \App\Jobs\TriggerAction::dispatch($action, $params);
         if ($delay) {
             $job->delay($delay);
@@ -1506,5 +1508,10 @@ class Helper
     public static function getClassName($param)
     {
         return $param->getType() && !$param->getType()->isBuiltin() ? method_exists($param->getType(), 'getName') ? $param->getType()->getName() : $param->getClass()->name : null;
+    }
+
+    public static function getWebCronHash()
+    {
+        return md5(config('app.key').'web_cron_hash');
     }
 }

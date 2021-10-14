@@ -292,6 +292,12 @@ $(document).ready(function(){
 			dt.next().children().find('.form-control:first').focus();
 		}, 100);
 	});
+
+	// Dirty JS hack because there was no way found to expand outer container when sidebar grows.
+	if ($('#conv-layout-customer').length && $(window).outerWidth() >= 1100 && $('.conv-sidebar-block').length > 2) {
+		adjustCustomerSidebarHeight();
+		setTimeout(adjustCustomerSidebarHeight, 2000);
+	}
 });
 
 function initMuteMailbox()
@@ -1344,9 +1350,11 @@ function showReplyForm(data, scroll_offset)
 			}
 			if (field == 'to_email' || field == 'cc' || field == 'bcc') {
 				if (data && typeof(data.to) != "undefined") {
-					addSelect2Option($("#"+field), {
-						id: data[field], text: data[field]
-					});
+					for (var i in data[field]) {
+						addSelect2Option($("#"+field), {
+							id: data[field][i], text: data[field][i]
+						});
+					}
 				} else {
 					$("#"+field).children('option:first').removeAttr('selected');
 				}
@@ -1469,9 +1477,14 @@ function convEditorInit()
 	    };
 	}
 
+	options = fsApplyFilter('editor.options', options);
+
 	$('#body').summernote(options);
+	$('#editor_bottom_toolbar a[data-modal-applied="1"]').removeAttr('data-modal-applied');
 	var html = $('#editor_bottom_toolbar').html();
 	$('.note-statusbar').addClass('note-statusbar-toolbar form-inline').html(html);
+	// To init new modal links
+	initModals();
 
 	// Track changes to save draft
 	$("#to, #to_email, #cc, #bcc, #subject, #name, #phone").on('keyup keypress', function(event) {
@@ -1743,6 +1756,8 @@ function initRecipientSelector(custom_options, selector)
 
 	var result = initCustomerSelector(selector, options);
 
+	result = fsApplyFilter('conversation.recipient_selector', result, {selector:selector});
+
 	if (options.editable) {
 		result.on('select2:closing', function(e) {
 			var params = e.params;
@@ -1788,6 +1803,8 @@ function initRecipientSelector(custom_options, selector)
 		    });
 		});
 	}
+
+	fsDoAction('conversation.recipient_selector_initialized', {selector:selector});
 
 	return result;
 }
@@ -3688,7 +3705,7 @@ function forwardConversation(e)
 	showForwardForm({}, reply_block);
 
 	// Load attachments
-	loadAttachments();
+	loadAttachments(true);
 }
 
 // Follow / unfollow conversation
@@ -3721,15 +3738,21 @@ function followConversation(action)
 	);
 }
 
-// Load attachments for the draft of a new conversation of draft of the forward
-function loadAttachments()
+// Load attachments for the draft of a new conversation or draft of the forward
+function loadAttachments(is_forwarding)
 {
 	var attachments_container = $(".attachments-upload:first");
 	var conversation_id = getGlobalAttr('conversation_id');
+
+	if (typeof(is_forwarding) == "undefined") {
+		is_forwarding = false;
+	}
+
 	if (!attachments_container.hasClass('forward-attachments-loaded') && conversation_id) {
 		fsAjax({
 				action: 'load_attachments',
-				conversation_id: conversation_id
+				conversation_id: conversation_id,
+				is_forwarding: is_forwarding
 			},
 			laroute.route('conversations.ajax'),
 			function(response) {
@@ -4864,4 +4887,21 @@ function initUsers()
 	$('#search-users-clear').click(function(e) {
 		$('#search-users').val('').keypress();
 	});
+}
+
+function copyToClipboard(text) {
+    var $temp = $("<input>");
+    $("body").append($temp);
+    $temp.val(text).select();
+    document.execCommand("copy");
+    $temp.remove();
+}
+
+function adjustCustomerSidebarHeight()
+{
+	var sidebar_h = $('#conv-layout-customer')[0].scrollHeight;
+
+	if (sidebar_h > $('#conv-layout').height()) {
+		$('#conv-layout').css('min-height', (sidebar_h+20)+'px');
+	}
 }

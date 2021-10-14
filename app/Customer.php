@@ -130,6 +130,7 @@ class Customer extends Model
      */
     const SOCIAL_TYPE_TWITTER = 1;
     const SOCIAL_TYPE_FACEBOOK = 2;
+    const SOCIAL_TYPE_TELEGRAM = 14;
     const SOCIAL_TYPE_LINKEDIN = 3;
     const SOCIAL_TYPE_ABOUTME = 4;
     const SOCIAL_TYPE_GOOGLE = 5;
@@ -145,6 +146,7 @@ class Customer extends Model
     public static $social_types = [
         self::SOCIAL_TYPE_TWITTER    => 'twitter',
         self::SOCIAL_TYPE_FACEBOOK   => 'facebook',
+        self::SOCIAL_TYPE_TELEGRAM   => 'telegram',
         self::SOCIAL_TYPE_LINKEDIN   => 'linkedin',
         self::SOCIAL_TYPE_ABOUTME    => 'aboutme',
         self::SOCIAL_TYPE_GOOGLE     => 'google',
@@ -161,6 +163,7 @@ class Customer extends Model
     public static $social_type_names = [
         self::SOCIAL_TYPE_TWITTER    => 'Twitter',
         self::SOCIAL_TYPE_FACEBOOK   => 'Facebook',
+        self::SOCIAL_TYPE_TELEGRAM   => 'Telegram',
         self::SOCIAL_TYPE_LINKEDIN   => 'Linkedin',
         self::SOCIAL_TYPE_ABOUTME    => 'About.me',
         self::SOCIAL_TYPE_GOOGLE     => 'Google',
@@ -946,7 +949,13 @@ class Customer extends Model
 
         if ($replace_data) {
             // Replace data.
-            $this->fill($data);
+            $data_prepared = $data;
+            foreach ($data_prepared as $i => $value) {
+                if (is_array($value)) {
+                    unset($data_prepared[$i]);
+                }
+            }
+            $this->fill($data_prepared);
             $result = true;
         } else {
             // Update empty fields.
@@ -1123,14 +1132,19 @@ class Customer extends Model
             ->get()
             ->toArray();
 
-        foreach ($data as $values) {
+        foreach ($list as $email) {
             // Dummy customer.
             $customer = new Customer();
-            $customer->email = $values['email'];
-            $customer->first_name = $values['first_name'];
-            $customer->last_name = $values['last_name'];
+            $customer->email = $email;
 
-            $result[$values['email']] = $customer->getNameAndEmail();
+            foreach ($data as $values) {
+                if (strtolower($values['email']) == strtolower($email)) {
+                    $customer->first_name = $values['first_name'];
+                    $customer->last_name = $values['last_name'];
+                    break;
+                }
+            }
+            $result[$email] = $customer->getNameAndEmail();
         }
 
         return $result;
@@ -1263,7 +1277,15 @@ class Customer extends Model
         $sp['value_url'] = $sp['value'];
 
         if (!preg_match("/^https?:\/\//i", $sp['value_url'])) {
-            $sp['value_url'] = 'http://'.$sp['value_url'];
+            switch ($sp['type']) {
+                case self::SOCIAL_TYPE_TELEGRAM:
+                    $sp['value_url'] = 'https://t.me/'.$sp['value'];
+                    break;
+                
+                default:
+                    $sp['value_url'] = 'http://'.$sp['value_url'];
+                    break;
+            }
         }
         if (empty($sp['value_url'])) {
             $sp['value_url'] = '';
